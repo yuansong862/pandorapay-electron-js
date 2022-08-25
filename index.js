@@ -2,6 +2,7 @@ const electron = require("electron");
 const path = require('path')
 const url = require('url')
 const httpHelper = require('./http-helper')
+const fs = require('fs')
 
 async function electronHelperGet( method, data ){
     return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
@@ -72,6 +73,14 @@ async function createWindow() {
 
 electron.app.on("ready", ()=>{
 
+    //append script electron-app.js in page head
+    const script = `<script src="/electron-app.js"></script>`
+    const text = fs.readFileSync('./dist/index.html').toString()
+    if (text.indexOf(`script`) === -1){
+        const p = text.indexOf("<head>")+"<head>".length
+        const newText = [text.slice( 0, p ), script, text.slice(p)].join('')
+        fs.writeFileSync('./dist/index.html', Buffer.from(newText) )
+    }
     createWindow()
 
 });
