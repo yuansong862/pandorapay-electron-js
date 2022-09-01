@@ -4,17 +4,31 @@ const url = require('url')
 const httpHelper = require('./http-helper')
 const fs = require('fs')
 
+require('dotenv').config();
+console.log("PROXY: ", process.env.PROXY_ADDRESS)
+
 async function electronHelperGet( method, data ){
     return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
 }
 
+const WEB_FOLDER = 'dist';
+const PROTOCOL = 'file';
+
+async function start(win){
+    await win.loadURL(url.format({
+        pathname: 'index.html',
+        protocol: PROTOCOL + ':',
+        slashes: true
+    }));
+}
 
 async function createWindow() {
-    const WEB_FOLDER = 'dist';
-    const PROTOCOL = 'file';
+
 
     electron.protocol.interceptFileProtocol(PROTOCOL, (request, callback) => {
-        // // Strip protocol
+        // Strip protocol
+        if (typeof request.url !== "string") throw "Invalid string"
+
         let url = request.url.substr(PROTOCOL.length + 1);
 
         // Build complete path for node require function
@@ -27,12 +41,14 @@ async function createWindow() {
         if (url.indexOf('?') > 0)
             url = url.slice(0, url.indexOf('?'))
 
+        console.log("url", url)
+
         //console.log(url);
         callback({path: url});
     });
 
     // Create the browser window.
-    let win = new electron.BrowserWindow( {
+    const win = new electron.BrowserWindow( {
         width: 1200,
         height: 800,
         webPreferences: {
@@ -61,11 +77,13 @@ async function createWindow() {
     })
 
     // and load the index.html of the app.
-    await win.loadURL(url.format({
-        pathname: 'index.html',
-        protocol: PROTOCOL + ':',
-        slashes: true
-    }));
+    if (process.env.PROXY_ADDRESS){
+        await win.webContents.session.setProxy({proxyRules:"socks5://114.215.193.156:1080"})
+        console.log("starting")
+        await start(win)
+    }else {
+        await start(win)
+    }
 
 
 

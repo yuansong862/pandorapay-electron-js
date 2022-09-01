@@ -11,5 +11,8 @@
   "devDependencies": {
     "electron": "^20.0.3",
     "electron-packager": "^15.5.1"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.2"
   }
 }
