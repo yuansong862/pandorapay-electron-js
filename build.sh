@@ -13,7 +13,8 @@ if [[ "$*" == *wasm* ]]; then
   echo "Build Wasm"
 
   cd ../go-pandora-pay/ || exit
-  ./scripts/build-wasm.sh main build zopfli
+  ./scripts/build-wasm.sh main build
+  ./scripts/build-wasm.sh helper build
 
   cd ../pandorapay-electron-js || exit
 fi
@@ -32,9 +33,15 @@ if [[ "$*" == *wallet* ]]; then
   echo "Build Wallet"
 
   cd ../PandoraPay-wallet/ || exit
-  npm run build && cp -r ./dist/build ../pandorapay-electron-js/dist/
+
+  npm run build
+
+  cp -r ./dist/build/* ../pandorapay-electron-js/dist
 
   cd ../pandorapay-electron-js/ || exit
   rm ./dist/wasm/PandoraPay-wallet-helper.wasm
   rm ./dist/wasm/PandoraPay-wallet-helper.wasm.gz
+  rm ./dist/wasm/PandoraPay-wallet-helper.wasm.br
+  rm ./dist/wasm/PandoraPay-wallet-main.wasm.gz
+  rm ./dist/wasm/PandoraPay-wallet-main.wasm.br
 fi
