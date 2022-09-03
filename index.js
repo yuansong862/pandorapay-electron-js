@@ -113,7 +113,7 @@ async function createWindow() {
 
     // and load the index.html of the app.
     if (process.env.PROXY_ADDRESS){
-        await win.webContents.session.setProxy({proxyRules:"socks5://114.215.193.156:1080"})
+        await win.webContents.session.setProxy({proxyRules:process.env.PROXY_ADDRESS})
         console.log("starting")
         await start(win)
     }else {
