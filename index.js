@@ -3,12 +3,29 @@ const path = require('path')
 const url = require('url')
 const httpHelper = require('./http-helper')
 const fs = require('fs')
+const exec = require('child_process').execFile;
+const os = require("os");
 
 require('dotenv').config();
 console.log("PROXY: ", process.env.PROXY_ADDRESS)
 
 async function electronHelperGet( method, data ){
     return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
+}
+
+function execute(fileName, params, path) {
+
+    let child
+    const promise = new Promise((resolve, reject) => {
+        child = exec(fileName, params, { cwd: path, stdio: ['pipe', 'pipe', 'ignore'] }, (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+        });
+    });
+    return {
+        promise,
+        child,
+    }
 }
 
 const WEB_FOLDER = 'dist';
@@ -24,6 +41,21 @@ async function start(win){
 
 async function createWindow() {
 
+    let arch = os.arch()
+    let platform = os.platform()
+
+    console.log("architecture", arch )
+    console.log("platform", platform )
+
+    if (arch === 'x64') arch = 'amd64'
+    if (arch === 'x86') arch = '386'
+
+    let helperChild
+
+    if (!process.env.HELPER_DISABLED){
+        const out = execute(`./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`)
+        helperChild = out.child
+    }
 
     electron.protocol.interceptFileProtocol(PROTOCOL, (request, callback) => {
         // Strip protocol
@@ -60,14 +92,17 @@ async function createWindow() {
         center:  true,
     });
 
-    win.on('closed', () => electron.app.quit() );
+    win.on('closed', () => {
+        electron.app.quit()
+        if (helperChild) helperChild.kill()
+    } );
 
     electron.ipcMain.on("toMain", async (event, args )=>{
 
         if (typeof args === "object"){
             if (args.type === "helper-call"){
                 try{
-                    const out = await electronHelperGet(args.method, args.data)
+                    const out = await electronHelperGet(args.method, args.data )
                     win.webContents.send("fromMain", {type: "helper-answer", id: args.id, out })
                 }catch(e){
                     win.webContents.send("fromMain", {type: "helper-answer", id: args.id, error: e.toString() })

@@ -50,7 +50,7 @@ window.PandoraPayHelperLoader = ()=>{
         },
         decoderPromise: new Promise(async (resolve, reject)=>{
             try{
-                const balanceDecryptorTableSize = Number.parseInt( localStorage.getItem('balanceDecryptorTableSize') || '18');
+                const balanceDecryptorTableSize = Number.parseInt( localStorage.getItem('balanceDecryptorTableSize') || '23');
                 const out = await this.sendRequestWaitAnswer("wallet/initialize-balance-decryptor", MyTextEncode( JSONStringify( {tableSize: 1 << balanceDecryptorTableSize }) ) )
                 resolve( out )
             }catch(e){

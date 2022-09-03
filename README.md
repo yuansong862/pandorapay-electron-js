@@ -3,7 +3,7 @@
 ## Installation
 ```
 npm install
-cp -r ../PandoraPay-wallet/dist/build ./dist
+./build.sh
 ```
 
 ## Running
@@ -17,4 +17,10 @@ npm run build
 npm run paclage-win
 npm run paclage-mac
 npm run paclage-linux
+```
+
+## Tor Proxy
+edit `.env` file
+```
+PROXY_ADDRESS=socks5://127.0.0.1:9050
 ```
