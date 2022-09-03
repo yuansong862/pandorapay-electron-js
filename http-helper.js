@@ -13,7 +13,7 @@ exports.getJSON = function (options, data) {
     let postData
 
     if (data){
-        postData = JSON.stringify(data)
+        postData = Buffer.isBuffer(data) ? data : JSON.stringify(data)
         options.headers = {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(postData)

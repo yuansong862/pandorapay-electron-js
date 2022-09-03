@@ -3,18 +3,64 @@ const path = require('path')
 const url = require('url')
 const httpHelper = require('./http-helper')
 const fs = require('fs')
+const exec = require('child_process').execFile;
+const os = require("os");
+
+require('dotenv').config();
+console.log("PROXY: ", process.env.PROXY_ADDRESS)
 
 async function electronHelperGet( method, data ){
     return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
 }
 
+function execute(fileName, params, path) {
+
+    let child
+    const promise = new Promise((resolve, reject) => {
+        child = exec(fileName, params, { cwd: path, stdio: ['pipe', 'pipe', 'ignore'] }, (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+        });
+    });
+    return {
+        promise,
+        child,
+    }
+}
+
+const WEB_FOLDER = 'dist';
+const PROTOCOL = 'file';
+
+async function start(win){
+    await win.loadURL(url.format({
+        pathname: 'index.html',
+        protocol: PROTOCOL + ':',
+        slashes: true
+    }));
+}
 
 async function createWindow() {
-    const WEB_FOLDER = 'dist';
-    const PROTOCOL = 'file';
+
+    let arch = os.arch()
+    let platform = os.platform()
+
+    console.log("architecture", arch )
+    console.log("platform", platform )
+
+    if (arch === 'x64') arch = 'amd64'
+    if (arch === 'x86') arch = '386'
+
+    let helperChild
+
+    if (!process.env.HELPER_DISABLED){
+        const out = execute(`./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`)
+        helperChild = out.child
+    }
 
     electron.protocol.interceptFileProtocol(PROTOCOL, (request, callback) => {
-        // // Strip protocol
+        // Strip protocol
+        if (typeof request.url !== "string") throw "Invalid string"
+
         let url = request.url.substr(PROTOCOL.length + 1);
 
         // Build complete path for node require function
@@ -27,12 +73,14 @@ async function createWindow() {
         if (url.indexOf('?') > 0)
             url = url.slice(0, url.indexOf('?'))
 
+        console.log("url", url)
+
         //console.log(url);
         callback({path: url});
     });
 
     // Create the browser window.
-    let win = new electron.BrowserWindow( {
+    const win = new electron.BrowserWindow( {
         width: 1200,
         height: 800,
         webPreferences: {
@@ -44,14 +92,17 @@ async function createWindow() {
         center:  true,
     });
 
-    win.on('closed', () => electron.app.quit() );
+    win.on('closed', () => {
+        electron.app.quit()
+        if (helperChild) helperChild.kill()
+    } );
 
     electron.ipcMain.on("toMain", async (event, args )=>{
 
         if (typeof args === "object"){
             if (args.type === "helper-call"){
                 try{
-                    const out = await electronHelperGet(args.method, args.data)
+                    const out = await electronHelperGet(args.method, args.data )
                     win.webContents.send("fromMain", {type: "helper-answer", id: args.id, out })
                 }catch(e){
                     win.webContents.send("fromMain", {type: "helper-answer", id: args.id, error: e.toString() })
@@ -61,11 +112,13 @@ async function createWindow() {
     })
 
     // and load the index.html of the app.
-    await win.loadURL(url.format({
-        pathname: 'index.html',
-        protocol: PROTOCOL + ':',
-        slashes: true
-    }));
+    if (process.env.PROXY_ADDRESS){
+        await win.webContents.session.setProxy({proxyRules:process.env.PROXY_ADDRESS})
+        console.log("starting")
+        await start(win)
+    }else {
+        await start(win)
+    }
 
 
 
