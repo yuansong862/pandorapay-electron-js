@@ -10,8 +10,10 @@ require('dotenv').config();
 console.log("PROXY: ", process.env.PROXY_ADDRESS)
 const helperPort = Number.parseInt( process.env.HELPER_PORT || '25712' )
 
+let helperChild
+
 async function electronHelperGet( method, data ){
-    return httpHelper.getJSON({host: "localhost", port: helperPort, path: '/'+method, method: "POST"}, data )
+    return httpHelper.getJSON({host: "localhost", port: helperPort, path: method, method: "POST"}, data )
 }
 
 function execute(fileName, params, path) {
@@ -51,7 +53,6 @@ async function createWindow() {
     if (arch === 'x64') arch = 'amd64'
     if (arch === 'x86') arch = '386'
 
-    let helperChild
 
     if (!process.env.HELPER_DISABLED){
         const filename = `./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`
@@ -98,11 +99,6 @@ async function createWindow() {
         center:  true,
     });
 
-    win.on('closed', () => {
-        electron.app.quit()
-        if (helperChild) helperChild.kill()
-    } );
-
     electron.ipcMain.on("toMain", async (event, args )=>{
 
         if (typeof args === "object"){
@@ -143,3 +139,13 @@ electron.app.on("ready", ()=>{
     createWindow()
 
 });
+
+electron.app.on('window-all-closed', () => {
+    if (helperChild){
+        helperChild.kill()
+        helperChild = undefined
+    }
+    if (process.platform !== 'darwin') {
+        electron.app.quit()
+    }
+})

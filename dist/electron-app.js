@@ -42,6 +42,8 @@ window.api.receive("fromMain", (data) => {
     }
 })
 
+window.PandoraPayHelperPromise = new Promise((resolve) => resolve(true) )
+
 window.PandoraPayHelperLoader = ()=>{
     window.PandoraPayHelper = {
         helloPandoraHelper: ()=> {
@@ -51,14 +53,17 @@ window.PandoraPayHelperLoader = ()=>{
         decoderPromise: new Promise(async (resolve, reject)=>{
             try{
                 const balanceDecryptorTableSize = Number.parseInt( localStorage.getItem('balanceDecryptorTableSize') || '23');
-                const out = await this.sendRequestWaitAnswer("wallet/initialize-balance-decryptor", MyTextEncode( JSONStringify( {tableSize: 1 << balanceDecryptorTableSize }) ) )
+                const out = await this.sendRequestWaitAnswer("/wallet/initialize-balance-decryptor", MyTextEncode( JSONStringify( {tableSize: 1 << balanceDecryptorTableSize }) ) )
                 resolve( out )
             }catch(e){
                 reject(e)
             }
         }),
         wallet:{
-            decryptBalance: (data, cb )=> sendRequestWaitAnswer("/wallet/decrypt-balance", data )
+            decryptBalance: async (data, cb )=> {
+                const out = await sendRequestWaitAnswer("/wallet/decrypt-balance", data )
+                return [()=>([true, out ])]
+            }
         },
         transactions: {
             builder:{
