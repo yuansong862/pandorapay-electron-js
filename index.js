@@ -5,6 +5,7 @@ const httpHelper = require('./http-helper')
 const fs = require('fs')
 const exec = require('child_process').execFile;
 const os = require("os");
+const config = require('./config')
 
 require('dotenv').config();
 console.log("PROXY: ", process.env.PROXY_ADDRESS)
@@ -60,7 +61,7 @@ async function createWindow() {
             console.error("Electron helper not found", filename)
             process.exit(0)
         }
-        const out = execute(filename, [`--tcp-server-port=${helperPort}`])
+        const out = execute(filename, [`--tcp-server-port=${helperPort}`, ...config.goArgv ])
         helperChild = out.child
     }
 
