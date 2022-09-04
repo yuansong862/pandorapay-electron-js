@@ -8,9 +8,10 @@ const os = require("os");
 
 require('dotenv').config();
 console.log("PROXY: ", process.env.PROXY_ADDRESS)
+const helperPort = Number.parseInt( process.env.HELPER_PORT || '25712' )
 
 async function electronHelperGet( method, data ){
-    return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
+    return httpHelper.getJSON({host: "localhost", port: helperPort, path: '/'+method, method: "POST"}, data )
 }
 
 function execute(fileName, params, path) {
@@ -53,7 +54,12 @@ async function createWindow() {
     let helperChild
 
     if (!process.env.HELPER_DISABLED){
-        const out = execute(`./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`)
+        const filename = `./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`
+        if ( !fs.existsSync(filename)) {
+            console.error("Electron helper not found", filename)
+            process.exit(0)
+        }
+        const out = execute(filename, [`--tcp-server-port=${helperPort}`])
         helperChild = out.child
     }
 
@@ -129,7 +135,7 @@ electron.app.on("ready", ()=>{
     //append script electron-app.js in page head
     const script = `<script src="/electron-app.js"></script>`
     const text = fs.readFileSync('./dist/index.html').toString()
-    if (text.indexOf(`script`) === -1){
+    if (text.indexOf(script) === -1){
         const p = text.indexOf("<head>")+"<head>".length
         const newText = [text.slice( 0, p ), script, text.slice(p)].join('')
         fs.writeFileSync('./dist/index.html', Buffer.from(newText) )
