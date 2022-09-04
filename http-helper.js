@@ -6,14 +6,15 @@ const https = require('https');
  * @param options: http options object
  */
 exports.getJSON = function (options, data) {
-    console.log('rest::getJSON');
 
     const reqHandler = options.port === 443 ? https : http;
 
-    let postData
+    let postData = data
 
     if (data){
-        postData = Buffer.isBuffer(data) ? data : JSON.stringify(data)
+        if (!(data instanceof Uint8Array || Buffer.isBuffer(data)) )
+            postData = JSON.stringify(data)
+
         options.headers = {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(postData)

@@ -5,12 +5,16 @@ const httpHelper = require('./http-helper')
 const fs = require('fs')
 const exec = require('child_process').execFile;
 const os = require("os");
+const config = require('./config')
 
 require('dotenv').config();
 console.log("PROXY: ", process.env.PROXY_ADDRESS)
+const helperPort = Number.parseInt( process.env.HELPER_PORT || '25712' )
+
+let helperChild
 
 async function electronHelperGet( method, data ){
-    return httpHelper.getJSON({host: "localhost", port: 8080, path: '/'+method, method: "POST"}, data )
+    return httpHelper.getJSON({host: "localhost", port: helperPort, path: method, method: "POST"}, data )
 }
 
 function execute(fileName, params, path) {
@@ -50,10 +54,14 @@ async function createWindow() {
     if (arch === 'x64') arch = 'amd64'
     if (arch === 'x86') arch = '386'
 
-    let helperChild
 
     if (!process.env.HELPER_DISABLED){
-        const out = execute(`./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`)
+        const filename = `./dist/helper/pandora-electron-helper-${arch}-${platform}${platform === 'window' ? '.exe' : ''}`
+        if ( !fs.existsSync(filename)) {
+            console.error("Electron helper not found", filename)
+            process.exit(0)
+        }
+        const out = execute(filename, [`--tcp-server-port=${helperPort}`, ...config.goArgv ])
         helperChild = out.child
     }
 
@@ -92,11 +100,6 @@ async function createWindow() {
         center:  true,
     });
 
-    win.on('closed', () => {
-        electron.app.quit()
-        if (helperChild) helperChild.kill()
-    } );
-
     electron.ipcMain.on("toMain", async (event, args )=>{
 
         if (typeof args === "object"){
@@ -129,7 +132,7 @@ electron.app.on("ready", ()=>{
     //append script electron-app.js in page head
     const script = `<script src="/electron-app.js"></script>`
     const text = fs.readFileSync('./dist/index.html').toString()
-    if (text.indexOf(`script`) === -1){
+    if (text.indexOf(script) === -1){
         const p = text.indexOf("<head>")+"<head>".length
         const newText = [text.slice( 0, p ), script, text.slice(p)].join('')
         fs.writeFileSync('./dist/index.html', Buffer.from(newText) )
@@ -137,3 +140,13 @@ electron.app.on("ready", ()=>{
     createWindow()
 
 });
+
+electron.app.on('window-all-closed', () => {
+    if (helperChild){
+        helperChild.kill()
+        helperChild = undefined
+    }
+    if (process.platform !== 'darwin') {
+        electron.app.quit()
+    }
+})
