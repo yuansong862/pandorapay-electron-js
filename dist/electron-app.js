@@ -69,8 +69,8 @@ window.PandoraPayHelperLoader = ()=>{
             builder:{
                 createZetherTx: async (data, cb )=> {
                     const out = await sendRequestWaitAnswer("/transactions/builder/create-zether-transaction", data )
-                    out[0] = Base64Binary.decodeArrayBuffer(out[0])
-                    out[1] = Base64Binary.decodeArrayBuffer(out[1])
+                    out[0] = Base64Binary.decode(out[0])
+                    out[1] = Base64Binary.decode(out[1])
                     return out
                 }
             }
@@ -82,15 +82,6 @@ window.PandoraPayHelperLoader = ()=>{
 //https://github.com/danguer/blog-examples/blob/master/js/base64-binary.js
 const Base64Binary = {
     _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
-
-    /* will return a  Uint8Array type */
-    decodeArrayBuffer: function(input) {
-        var bytes = (input.length/4) * 3;
-        var ab = new ArrayBuffer(bytes);
-        this.decode(input, ab);
-
-        return ab;
-    },
 
     removePaddingChars: function(input){
         var lkey = this._keyStr.indexOf(input.charAt(input.length - 1));
